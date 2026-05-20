@@ -1,0 +1,191 @@
+import json
+from datetime import datetime
+from typing import List, Dict, Optional
+import openai  # pip install openai
+
+# Configura tu API key de OpenAI
+openai.api_key = "TU_API_KEY"
+
+def search_manufacturer_manual(vehicle_model: str, vehicle_type: str) -> str:
+    """
+    Usa la IA con búsqueda web para encontrar el manual del fabricante
+    y extraer los intervalos de mantenimiento.
+    """
+    prompt = f"""
+    Busca en internet el manual de mantenimiento del {vehicle_type} modelo {vehicle_model}.
+    Extrae SOLO los intervalos de mantenimiento programado para:
+    - Cambio de aceite (km o tiempo)
+    - Cambio de filtro de aceite/aire
+    - Cambio de neumáticos
+    - Otros filtros (combustible, habitáculo)
+    - Batería, bujías (si aplica)
+
+    Devuelve la información en formato JSON con esta estructura:
+    {{
+        "oil_change_km": 10000,
+        "oil_change_months": 12,
+        "filter_change_km": 10000,
+        "tire_change_km": 40000,
+        "other_filters_km": 20000,
+        "spark_plugs_km": 30000
+    }}
+    Si algún dato no se encuentra, pon null.
+    """
+    
+    # Llamada a GPT-4 con capacidad de búsqueda web (modelo gpt-4-turbo-preview + herramienta)
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4-turbo-preview",
+            messages=[{"role": "user", "content": prompt}],
+            tools=[{
+                "type": "function",
+                "function": {
+                    "name": "search_web",
+                    "description": "Busca en internet información actualizada",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string"}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            }],
+            tool_choice="auto"
+        )
+        
+        # Procesar la respuesta (simplificado, normalmente habría que manejar tool calls)
+        content = response.choices[0].message.content
+        # Extraer JSON de la respuesta
+        start = content.find('{')
+        end = content.rfind('}') + 1
+        if start != -1 and end != 0:
+            json_str = content[start:end]
+            return json.loads(json_str)
+        else:
+            raise ValueError("No se encontró JSON en la respuesta")
+    except Exception as e:
+        print(f"Error al buscar el manual: {e}")
+        # Fallback con datos genéricos (ejemplo)
+        return {
+            "oil_change_km": 10000,
+            "oil_change_months": 12,
+            "filter_change_km": 10000,
+            "tire_change_km": 40000,
+            "other_filters_km": 20000,
+            "spark_plugs_km": 30000
+        }
+
+
+def calculate_future_maintenance(
+    vehicle_model: str,
+    vehicle_type: str,
+    current_km: int,
+    last_oil_change_km: Optional[int] = None,
+    last_filter_change_km: Optional[int] = None,
+    last_tire_change_km: Optional[int] = None
+) -> List[Dict]:
+    """
+    Calcula los futuros mantenimientos basados en el manual y el estado actual.
+    Retorna una lista de eventos (descripción, km estimado, prioridad).
+    """
+    # Obtener intervalos desde el manual usando IA
+    intervals = search_manufacturer_manual(vehicle_model, vehicle_type)
+    
+    upcoming = []
+    
+    # Aceite
+    if intervals.get("oil_change_km") and last_oil_change_km is not None:
+        next_oil = last_oil_change_km + intervals["oil_change_km"]
+        if next_oil > current_km:
+            upcoming.append({
+                "tarea": "Cambio de aceite",
+                "km_estimado": next_oil,
+                "prioridad": "alta" if next_oil - current_km < 2000 else "media"
+            })
+    
+    # Filtros (generalmente junto con aceite o intervalos específicos)
+    if intervals.get("filter_change_km") and last_filter_change_km is not None:
+        next_filter = last_filter_change_km + intervals["filter_change_km"]
+        if next_filter > current_km:
+            upcoming.append({
+                "tarea": "Cambio de filtro (aceite/aire)",
+                "km_estimado": next_filter,
+                "prioridad": "media"
+            })
+    
+    # Neumáticos
+    if intervals.get("tire_change_km") and last_tire_change_km is not None:
+        next_tires = last_tire_change_km + intervals["tire_change_km"]
+        if next_tires > current_km:
+            upcoming.append({
+                "tarea": "Cambio de neumáticos",
+                "km_estimado": next_tires,
+                "prioridad": "baja" if next_tires - current_km > 10000 else "media"
+            })
+    
+    # Otros filtros
+    if intervals.get("other_filters_km"):
+        # Para este ejemplo, supongamos que se hizo en el último cambio de aceite
+        next_other = current_km + (intervals["other_filters_km"] - (current_km % intervals["other_filters_km"]))
+        upcoming.append({
+            "tarea": "Cambio de filtro de combustible/habitáculo",
+            "km_estimado": next_other,
+            "prioridad": "baja"
+        })
+    
+    # Bujías (si existen)
+    if intervals.get("spark_plugs_km"):
+        next_plugs = current_km + (intervals["spark_plugs_km"] - (current_km % intervals["spark_plugs_km"]))
+        upcoming.append({
+            "tarea": "Cambio de bujías",
+            "km_estimado": next_plugs,
+            "prioridad": "baja"
+        })
+    
+    # Ordenar por km estimado
+    upcoming.sort(key=lambda x: x["km_estimado"])
+    return upcoming
+
+
+def registrar_vehiculo_y_obtener_mantenimientos(
+    modelo: str,
+    tipo: str,  # "coche" o "moto"
+    km_actual: int,
+    ultimo_aceite_km: int,
+    ultimo_filtro_km: int,
+    ultimos_neumaticos_km: int
+) -> None:
+    """
+    Función principal que se ejecuta al registrar un nuevo vehículo.
+    Activa la IA, busca el manual, y muestra solo los futuros mantenimientos.
+    """
+    print(f"🔍 Buscando manual del {tipo} {modelo} mediante IA...")
+    futuros = calculate_future_maintenance(
+        vehicle_model=modelo,
+        vehicle_type=tipo,
+        current_km=km_actual,
+        last_oil_change_km=ultimo_aceite_km,
+        last_filter_change_km=ultimo_filtro_km,
+        last_tire_change_km=ultimos_neumaticos_km
+    )
+    
+    print("\n📋 FUTUROS MANTENIMIENTOS PROGRAMADOS:\n")
+    if not futuros:
+        print("No hay mantenimientos futuros próximos.")
+    else:
+        for tarea in futuros:
+            print(f"✔ {tarea['tarea']} - a los {tarea['km_estimado']} km (prioridad: {tarea['prioridad']})")
+
+
+# ========== EJEMPLO DE USO ==========
+if __name__ == "__main__":
+    # Cuando el usuario registra un modelo en tu app
+    registrar_vehiculo_y_obtener_mantenimientos(
+        modelo="Toyota Corolla 2022",
+        tipo="coche",
+        km_actual=15000,
+        ultimo_aceite_km=10000,
+        ultimo_filtro_km=10000,
+        ultimos_neumaticos_km=0  # Neumáticos originales desde 0 km
+    )
