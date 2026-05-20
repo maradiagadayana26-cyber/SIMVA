@@ -15,6 +15,8 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  accessToken: string | null;
+  setAccessToken: (token: string | null) => void;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         setProfile(null);
+        setAccessToken(null);
       }
       setLoading(false);
     });
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await auth.signOut();
+    setAccessToken(null);
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
@@ -76,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, updateProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, accessToken, setAccessToken, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { auth, db, handleFirestoreError, OperationType } from "@/src/lib/firebase";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -23,6 +24,7 @@ import { LegalDocuments } from "@/src/components/legal/Documents";
 type AuthMethod = 'select' | 'email';
 
 export function AuthPage() {
+  const { setAccessToken } = useAuth();
   const [method, setMethod] = useState<AuthMethod>('select');
   const [isLogin, setIsLogin] = useState(true);
   
@@ -98,9 +100,17 @@ export function AuthPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+    provider.addScope('https://www.googleapis.com/auth/gmail.send');
+    provider.addScope('https://www.googleapis.com/auth/gmail.modify');
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setAccessToken(credential.accessToken);
+      }
       
       const isNewUser = (result as any)._tokenResponse?.isNewUser;
 

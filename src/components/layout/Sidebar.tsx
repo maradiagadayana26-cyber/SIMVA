@@ -9,7 +9,8 @@ import {
   LogOut, 
   Bell, 
   PlusCircle, 
-  Wrench
+  Wrench,
+  Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: "dashboard", label: "Mi Vehículo", icon: LayoutDashboard },
     { id: "register", label: "Registrar Nuevo", icon: PlusCircle },
     { id: "workshops", label: "Talleres Cercanos", icon: Wrench },
+    { id: "gmail", label: "Centro de Gmail", icon: Mail },
     { id: "notifications", label: "Notificaciones", icon: Bell, hasBadge: true },
     { id: "settings", label: "Ajustes", icon: Settings },
   ];

@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, Bell, User, Wrench } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Bell, User, Wrench, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/src/contexts/NotificationContext";
 
@@ -14,6 +14,7 @@ export function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
     { id: "dashboard", icon: LayoutDashboard, label: "Inicio" },
     { id: "register", icon: PlusCircle, label: "Registrar" },
     { id: "workshops", icon: Wrench, label: "Talleres" },
+    { id: "gmail", icon: Mail, label: "Gmail" },
     { id: "notifications", icon: Bell, label: "Avisos", hasBadge: true },
     { id: "settings", icon: User, label: "Perfil" },
   ];

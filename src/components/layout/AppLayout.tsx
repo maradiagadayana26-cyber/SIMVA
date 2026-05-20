@@ -5,6 +5,7 @@ import { Dashboard } from "../dashboard/Dashboard";
 import { VehicleForm } from "../home/VehicleForm";
 import { NotificationsList } from "../dashboard/NotificationsList";
 import { WorkshopSearch } from "../workshop/WorkshopSearch";
+import { GmailPortal } from "../gmail/GmailPortal";
 import { SimvaLogo } from "../icons/SimvaLogo";
 import { CustomBackground } from "./CustomBackground";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -59,6 +60,8 @@ export function AppLayout() {
         return <NotificationsList />;
       case "workshops":
         return <WorkshopSearch />;
+      case "gmail":
+        return <GmailPortal />;
       case "settings":
         return (
           <div className="p-8 max-w-2xl mx-auto space-y-8">
