@@ -1,0 +1,240 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Additional user profile information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "app_theme": { "type": "string", "enum": ["light", "dark", "system"] },
+        "email_maintenance_enabled": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "created_at"]
+    },
+    "Vehicle": {
+      "title": "Vehicle Registration",
+      "description": "Details of the registered vehicle",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "fuelType": { "type": "string" },
+        "engineType": { "type": "string" },
+        "year": { "type": "number" },
+        "maintenanceFrequency": { "type": "string" },
+        "currentKms": { "type": "number" },
+        "lastMaintenanceDate": { "type": "string", "format": "date" },
+        "itvDueDate": { "type": "string", "format": "date" },
+        "techSheetImg": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "brand", "model", "currentKms", "createdAt"]
+    },
+    "Device": {
+      "title": "User Device",
+      "description": "Token and metadata for push notifications",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "deviceToken": { "type": "string" },
+        "deviceOs": { "type": "string", "enum": ["android", "ios", "web"] },
+        "deviceType": { "type": "string", "enum": ["mobile", "tablet", "desktop"] },
+        "isPrimary": { "type": "boolean" },
+        "lastActiveAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "deviceToken", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Sent notifications log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" },
+        "delivered": { "type": "boolean" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["userId", "title", "body", "sentAt"]
+    },
+    "Consent": {
+      "title": "User Consent",
+      "description": "Records of user legal consents",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "consentType": { "type": "string" },
+        "accepted": { "type": "boolean" },
+        "version": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "acceptedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "consentType", "accepted", "acceptedAt"]
+    },
+    "VehicleImage": {
+      "title": "Vehicle Image",
+      "description": "Images of vehicle or documents",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "imageType": { "type": "string", "enum": ["vehicle_doc", "vehicle_photo"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "vehicleId", "imageUrl", "imageType", "createdAt"]
+    },
+    "EmailLog": {
+      "title": "Email Log",
+      "description": "History of sent emails",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "recipientEmail": { "type": "string", "format": "email" },
+        "subject": { "type": "string" },
+        "status": { "type": "string" },
+        "error": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "recipientEmail", "subject", "sentAt"]
+    },
+    "SavedWorkshop": {
+      "title": "Saved Workshop",
+      "description": "Workshops saved by the user for quick access",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "placeId": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "rating": { "type": "number" },
+        "location": { "type": "object" },
+        "savedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "placeId", "name", "savedAt"]
+    },
+    "ScheduledNotification": {
+      "title": "Scheduled Notification",
+      "description": "Pending reminders for future delivery",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "type": { "type": "string", "enum": ["welcome", "maintenance", "itv", "oil_change", "tyre_change"] },
+        "dueAt": { "type": "string", "format": "date-time" },
+        "dueKm": { "type": "number" },
+        "isSent": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "vehicleId", "type", "dueAt", "isSent", "createdAt"]
+    },
+    "UserNotification": {
+      "title": "User Notification",
+      "description": "In-app notification visible to the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "relatedVehicleId": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "isRead", "createdAt"]
+    },
+    "MaintenanceRecord": {
+      "title": "Maintenance Record",
+      "description": "Log of a maintenance service performed",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "serviceType": { "type": "string" },
+        "kilometers": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "vehicleId", "date", "serviceType", "kilometers", "createdAt"]
+    },
+    "VehicleManual": {
+      "title": "Vehicle Manual",
+      "description": "User uploaded vehicle manuals, guidebooks, and specifications",
+      "type": "object",
+      "properties": {
+        "vehicle_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "file_url": { "type": "string" },
+        "file_type": { "type": "string" },
+        "file_size": { "type": "number" },
+        "uploaded_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicle_id", "user_id", "title", "file_url", "file_type", "uploaded_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/saved_workshops/{workshopId}": {
+      "schema": "SavedWorkshop",
+      "description": "User saved workshops"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "UserNotification",
+      "description": "User in-app notification center"
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": "Vehicle",
+      "description": "Vehicle documents"
+    },
+    "/vehicles/{vehicleId}/maintenance_history/{recordId}": {
+      "schema": "MaintenanceRecord",
+      "description": "Maintenance service logs for a specific vehicle"
+    },
+    "/vehicle_images/{imageId}": {
+      "schema": "VehicleImage",
+      "description": "Images of vehicle or documents"
+    },
+    "/vehicle_manuals/{manualId}": {
+      "schema": "VehicleManual",
+      "description": "User uploaded vehicle manuals, guidelines, or specs"
+    },
+    "/devices/{deviceId}": {
+      "schema": "Device",
+      "description": "Device registration documents"
+    },
+    "/scheduled_notifications/{notificationId}": {
+      "schema": "ScheduledNotification",
+      "description": "Notifications queued for processing"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Notification logs (legacy/general)"
+    },
+    "/user_consents/{consentId}": {
+      "schema": "Consent",
+      "description": "Legal consent logs"
+    },
+    "/phone_verification_codes/{codeId}": {
+      "schema": "PhoneVerificationCode",
+      "description": "SMS verification codes"
+    },
+    "/email_logs/{logId}": {
+      "schema": "EmailLog",
+      "description": "Email sent logs"
+    }
+  }
+}

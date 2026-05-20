@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      
+      // Permitir creación solo si el UID coincide y tiene los campos mínimos
+      allow create: if isOwner(userId) && 
+                    (incoming().get('email', '') is string);
+      
+      // Permitir actualización solo al propietario
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+
+      match /saved_workshops/{workshopId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow list, get, update, delete, create: if isOwner(userId);
+      }
+    }
+
+    // --- Vehicles ---
+    match /vehicles/{vehicleId} {
+      function isValidVehicle(data) {
+        return data.userId == request.auth.uid
+          && data.brand is string && data.brand.size() <= 100
+          && data.model is string && data.model.size() <= 100
+          && data.currentKms is number && data.currentKms >= 0;
+      }
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidVehicle(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidVehicle(incoming())
+        && incoming().userId == existing().userId
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'currentKms', 'lastMaintenanceDate', 'updatedAt', 'brand', 'model', 
+            'fuelType', 'engineType', 'year', 'maintenanceFrequency', 
+            'techSheetImg', 'lastMaintenanceKms'
+          ])
+        );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+
+      match /maintenance_history/{recordId} {
+        allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && get(/databases/$(database)/documents/vehicles/$(vehicleId)).data.userId == request.auth.uid
+                      && incoming().userId == request.auth.uid
+                      && incoming().vehicleId == vehicleId;
+        allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+      }
+    }
+
+    // --- Scheduled Notifications ---
+    match /scheduled_notifications/{notifId} {
+      allow read, write: if isSignedIn(); // Temporarily allow for debugging - usually only server-side
+    }
+
+    // --- Vehicle Images ---
+    match /vehicle_images/{imageId} {
+      function isValidImage(data) {
+        return data.userId == request.auth.uid
+          && data.vehicleId is string
+          && data.imageUrl is string && data.imageUrl.size() < 2048
+          && data.imageType in ['vehicle_doc', 'vehicle_photo'];
+      }
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidImage(incoming());
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // --- Vehicle Manuals ---
+    match /vehicle_manuals/{manualId} {
+      function isValidManual(data) {
+        return data.user_id == request.auth.uid
+          && data.vehicle_id is string
+          && data.title is string && data.title.size() <= 255
+          && data.file_url is string && data.file_url.size() < 2048
+          && data.file_type is string && data.file_type.size() <= 100;
+      }
+      allow list: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if isSignedIn() && isValidManual(incoming());
+      allow delete: if isSignedIn() && existing().user_id == request.auth.uid;
+    }
+
+    // --- Devices ---
+    match /devices/{deviceId} {
+      function isValidDevice(data) {
+        return data.userId == request.auth.uid
+          && data.deviceToken is string && data.deviceToken.size() <= 1024;
+      }
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidDevice(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidDevice(incoming())
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['lastActiveAt', 'deviceOs', 'deviceType', 'isPrimary', 'updatedAt'])
+        );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // --- Consents ---
+    match /user_consents/{consentId} {
+      function isValidConsent(data) {
+        return data.userId == request.auth.uid
+          && data.consentType is string
+          && data.accepted is bool;
+      }
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidConsent(incoming());
+    }
+
+    // --- Email Logs ---
+    match /email_logs/{logId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+    }
+
+
+  }
+}

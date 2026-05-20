@@ -1,0 +1,6 @@
+{
+  "name": "SIMVA 🦁",
+  "description": "Tu león perezoso que cuida de tu coche. Gestión inteligente y rápida de tu vehículo.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
