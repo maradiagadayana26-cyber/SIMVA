@@ -33,6 +33,7 @@ export function VehicleManuals({ vehicleId, vehicleName, brand, model, year, vin
   const [suggested, setSuggested] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -67,10 +68,7 @@ export function VehicleManuals({ vehicleId, vehicleName, brand, model, year, vin
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
+  const processFile = (selectedFile: File) => {
     // Check size limit (50MB as requested)
     if (selectedFile.size > 50 * 1024 * 1024) {
       toast.error("El archivo supera el límite permitido de 50MB.");
@@ -89,6 +87,31 @@ export function VehicleManuals({ vehicleId, vehicleName, brand, model, year, vin
       // Auto fill title with file name without extension
       const cleanName = selectedFile.name.replace(/\.[^/.]+$/, "");
       setTitle(cleanName);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      processFile(selectedFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      processFile(droppedFile);
     }
   };
 
@@ -185,57 +208,85 @@ export function VehicleManuals({ vehicleId, vehicleName, brand, model, year, vin
         </div>
 
         {/* Upload Form */}
-        <form onSubmit={handleUpload} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+        <form onSubmit={handleUpload} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
           <h3 className="text-xs font-black uppercase text-muted-foreground tracking-wider mb-2">
-            Subir Nuevo Manual (Máx 50MB)
+            Subir Nuevo Manual (PDF, PNG, JPG)
           </h3>
           
+          {/* Drag & Drop File Zone */}
+          <div 
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById("manual-file-upload")?.click()}
+            className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all ${
+              isDragging 
+                ? "border-primary bg-primary/10 scale-[1.01]" 
+                : file 
+                  ? "border-[#54FFB5]/40 bg-[#54FFB5]/5 hover:bg-[#54FFB5]/10" 
+                  : "border-white/10 hover:border-primary/40 hover:bg-white/5"
+            }`}
+          >
+            <input 
+              id="manual-file-upload"
+              type="file" 
+              accept="image/jpeg,image/png,application/pdf"
+              className="hidden" 
+              onChange={handleFileChange}
+            />
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className={`p-2.5 rounded-full ${file ? "bg-[#54FFB5]/20 text-[#54FFB5]" : "bg-primary/10 text-primary"} transition-all`}>
+                <Upload className={`h-5 w-5 ${isDragging ? "animate-bounce" : ""}`} />
+              </div>
+              <div>
+                {file ? (
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-[#54FFB5] truncate max-w-md mx-auto">
+                      ✓ {file.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Tamaño: {formatBytes(file.size)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm font-bold text-white">
+                    Arrastra y suelta tu manual aquí, o <span className="text-primary hover:underline font-extrabold pb-0.5">haz clic para buscar</span>
+                  </p>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Formatos PDF, JPG, PNG de hasta 50MB
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">Título</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">Título del documento</label>
               <Input 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ej. Manual de Usuario 2024"
+                placeholder="Ej. Guía del Propietario"
                 className="rounded-xl border-white/10"
               />
             </div>
             
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">Descripción (Opcional)</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">Detalles u observaciones</label>
               <Input 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ej. Guía rápida de fusibles"
+                placeholder="Ej. Fusibles, presión neumáticos"
                 className="rounded-xl border-white/10"
               />
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-2">
-            <div className="w-full md:w-auto relative cursor-pointer">
-              <Input 
-                id="manual-file-upload"
-                type="file" 
-                accept="image/jpeg,image/png,application/pdf"
-                className="hidden" 
-                onChange={handleFileChange}
-              />
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full rounded-xl border-dashed h-11 hover:bg-muted/30 font-bold text-xs"
-                onClick={() => document.getElementById("manual-file-upload")?.click()}
-              >
-                <Upload className="h-4 w-4 mr-2 text-primary" />
-                {file ? `Archivo: ${file.name.substring(0, 20)}...` : "Seleccionar Archivo"}
-              </Button>
-            </div>
-
+          <div className="flex justify-end pt-2">
             <Button 
               type="submit" 
               disabled={uploading || !file} 
-              className="w-full md:w-auto min-w-32 h-11 font-bold rounded-xl"
+              className="w-full md:w-auto min-w-40 h-11 font-bold rounded-xl"
             >
               {uploading ? (
                 <>
@@ -245,7 +296,7 @@ export function VehicleManuals({ vehicleId, vehicleName, brand, model, year, vin
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Subir Manual
+                  Guardar en Garaje
                 </>
               )}
             </Button>
