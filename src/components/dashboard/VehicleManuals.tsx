@@ -10,6 +10,10 @@ import axios from "axios";
 interface VehicleManualsProps {
   vehicleId: string;
   vehicleName: string;
+  brand?: string;
+  model?: string;
+  year?: string | number;
+  vin?: string;
   onClose: () => void;
 }
 
@@ -23,9 +27,10 @@ interface Manual {
   uploaded_at: string;
 }
 
-export function VehicleManuals({ vehicleId, vehicleName, onClose }: VehicleManualsProps) {
+export function VehicleManuals({ vehicleId, vehicleName, brand, model, year, vin, onClose }: VehicleManualsProps) {
   const { user } = useAuth();
   const [manuals, setManuals] = useState<Manual[]>([]);
+  const [suggested, setSuggested] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
@@ -39,8 +44,21 @@ export function VehicleManuals({ vehicleId, vehicleName, onClose }: VehicleManua
   const fetchManuals = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`/api/vehicle/${vehicleId}/manuals`);
-      setManuals(res.data);
+      const res = await axios.get(`/api/vehicle/${vehicleId}/manuals`, {
+        params: {
+          brand: brand || "",
+          model: model || "",
+          year: year || "",
+          vin: vin || ""
+        }
+      });
+      if (Array.isArray(res.data)) {
+        setManuals(res.data);
+        setSuggested(null);
+      } else if (res.data) {
+        setManuals(res.data.manuals || []);
+        setSuggested(res.data.suggestedManual || null);
+      }
     } catch (error) {
       console.error("Error loading manuals:", error);
       toast.error("No se pudieron cargar los manuales del vehículo");
@@ -145,7 +163,7 @@ export function VehicleManuals({ vehicleId, vehicleName, onClose }: VehicleManua
         initial={{ scale: 0.95, y: 15 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 15 }}
-        className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/20 bg-card/60 bg-gradient-to-b from-card to-card/90 shadow-2xl p-6 md:p-8 space-y-6"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-card/60 bg-gradient-to-b from-card to-card/90 shadow-2xl p-6 md:p-8 space-y-6 custom-scrollbar"
       >
         <button 
           onClick={onClose}
@@ -233,6 +251,84 @@ export function VehicleManuals({ vehicleId, vehicleName, onClose }: VehicleManua
             </Button>
           </div>
         </form>
+
+        {/* Suggested Official Manual */}
+        {suggested && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider">
+                  📖 Manual Oficial Sugerido
+                </h4>
+              </div>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-widest shrink-0">
+                Fábrica
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-white truncate uppercase tracking-tight">
+                  {suggested.title}
+                </p>
+                <p className="text-xs text-amber-200/80 mt-1">
+                  {suggested.description}
+                </p>
+              </div>
+              <a 
+                href={suggested.file_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="shrink-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-xs font-black uppercase text-black transition-all"
+              >
+                Abrir <ArrowRight className="h-4 w-4 text-black" />
+              </a>
+            </div>
+
+            {/* If VIN decode succeeded, draw a beautiful compact grid representing vehicle dimensions */}
+            {suggested.decodedVinData && (
+              <div className="pt-2.5 border-t border-amber-500/10 grid grid-cols-2 md:grid-cols-3 gap-2 text-[10px]">
+                {suggested.decodedVinData.make && (
+                  <div className="bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/5">
+                    <span className="text-amber-500/60 block font-bold uppercase tracking-wider">Marca</span>
+                    <span className="text-amber-100 font-extrabold uppercase">{suggested.decodedVinData.make}</span>
+                  </div>
+                )}
+                {suggested.decodedVinData.model && (
+                  <div className="bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/5">
+                    <span className="text-amber-500/60 block font-bold uppercase tracking-wider">Modelo</span>
+                    <span className="text-amber-100 font-extrabold uppercase">{suggested.decodedVinData.model}</span>
+                  </div>
+                )}
+                {suggested.decodedVinData.year && (
+                  <div className="bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/5">
+                    <span className="text-amber-500/60 block font-bold uppercase tracking-wider">Año de Fabr.</span>
+                    <span className="text-amber-100 font-extrabold">{suggested.decodedVinData.year}</span>
+                  </div>
+                )}
+                {suggested.decodedVinData.bodyClass && (
+                  <div className="bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/5 col-span-2 md:col-span-1">
+                    <span className="text-amber-500/60 block font-bold uppercase tracking-wider">Chasis</span>
+                    <span className="text-amber-100 font-extrabold truncate block">{suggested.decodedVinData.bodyClass}</span>
+                  </div>
+                )}
+                {suggested.decodedVinData.engineCylinders && (
+                  <div className="bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/5">
+                    <span className="text-amber-500/60 block font-bold uppercase tracking-wider">Cilindros</span>
+                    <span className="text-amber-100 font-extrabold">{suggested.decodedVinData.engineCylinders} Cil.</span>
+                  </div>
+                )}
+                {suggested.decodedVinData.driveType && (
+                  <div className="bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/5">
+                    <span className="text-amber-500/60 block font-bold uppercase tracking-wider">Tracción</span>
+                    <span className="text-amber-100 font-extrabold truncate block">{suggested.decodedVinData.driveType}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* List of Manuals */}
         <div className="space-y-3">

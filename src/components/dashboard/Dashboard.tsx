@@ -227,6 +227,10 @@ export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) 
           <VehicleManuals 
             vehicleId={selectedVehicleForManuals.id} 
             vehicleName={`${selectedVehicleForManuals.brand} ${selectedVehicleForManuals.model}`}
+            brand={selectedVehicleForManuals.brand}
+            model={selectedVehicleForManuals.model}
+            year={selectedVehicleForManuals.year}
+            vin={selectedVehicleForManuals.vin}
             onClose={() => setSelectedVehicleForManuals(null)}
           />
         )}

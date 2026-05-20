@@ -457,6 +457,99 @@ async function startServer() {
     }
   });
 
+  // --- Owner Manual Auto-Discovery Services ---
+  // Decodes a VIN using the official NHTSA api
+  async function getVehicleDataFromNHTSA(vin: string): Promise<any> {
+    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${encodeURIComponent(vin)}?format=json`;
+    try {
+      console.log(`[VIN Decoder] Querying NHTSA API for VIN: ${vin}`);
+      const response = await axios.get(url, { timeout: 3500 });
+      if (response.data && response.data.Results) {
+        const vehicleData: Record<string, string> = {};
+        response.data.Results.forEach((item: any) => {
+          if (item.Value && item.Value.trim() !== '') {
+            vehicleData[item.Variable] = item.Value;
+          }
+        });
+        return vehicleData;
+      }
+    } catch (error: any) {
+      console.error("[VIN Decoder] Error decoding VIN with NHTSA:", error.message);
+    }
+    return null;
+  }
+
+  // Predicts / Searches the manufacturer's official owner manual URL based on brand, model, and year
+  async function fetchOwnerManual(brand: string, model: string, year: string | number): Promise<string | null> {
+    console.log(`[Manual Finder] Searching manual for: ${brand} ${model} (${year})`);
+    
+    const cleanBrand = brand.trim().toLowerCase();
+    const cleanModel = model.trim().toLowerCase();
+    const cleanYear = String(year).trim();
+
+    // Pattern 1: Charm.li dataset lookup link for workshop/repair manuals
+    // format: https://charm.li/{Brand}/{Year}/{Model}/
+    const charmBrand = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase();
+    const charmModel = model.charAt(0).toUpperCase() + model.slice(1).toLowerCase();
+    const charmUrl = `https://charm.li/${encodeURIComponent(charmBrand)}/${encodeURIComponent(cleanYear)}/${encodeURIComponent(charmModel)}/`;
+
+    // Pattern 2: Predictable official pattern by manufacturer
+    let officialUrl = "";
+    if (cleanBrand.includes("toyota")) {
+      officialUrl = `https://www.toyota.com/owners/resources/warranty-owners-manuals/manual?brand=toyota&year=${cleanYear}&model=${encodeURIComponent(cleanModel)}`;
+    } else if (cleanBrand.includes("ford")) {
+      officialUrl = `https://www.ford.com/support/vehicle/${encodeURIComponent(cleanModel)}/${cleanYear}/owner-manual/`;
+    } else if (cleanBrand.includes("honda")) {
+      officialUrl = `https://owners.honda.com/vehicle-information/manuals?year=${cleanYear}&model=${encodeURIComponent(charmModel)}`;
+    } else if (cleanBrand.includes("nissan")) {
+      officialUrl = `https://www.nissanusa.com/content/dam/Nissan/us/manuals-and-guides/shared/common-manuals/${cleanYear}/owner-manual.pdf`;
+    } else if (cleanBrand.includes("chevrolet") || cleanBrand.includes("chevy")) {
+      officialUrl = `https://www.chevrolet.com/bypass/pcf/gma-content-api/resources/gma/pdf/${cleanYear}/chevrolet/${encodeURIComponent(cleanModel)}/owner-manual.pdf`;
+    } else if (cleanBrand.includes("seat")) {
+      officialUrl = `https://www.seat.es/posventa/manuales-instrucciones.html`;
+    } else if (cleanBrand.includes("volkswagen") || cleanBrand.includes("vw")) {
+      officialUrl = `https://userguide.volkswagen.de/public/vin/login/es_ES`;
+    } else if (cleanBrand.includes("peugeot")) {
+      officialUrl = `https://public.servicebox.peugeot.com/APddb/`;
+    } else {
+      // General fallback to charm repair database which contains incredible extensive catalogs
+      officialUrl = charmUrl;
+    }
+
+    try {
+      // Validate with a metadata head/get request
+      const testRes = await axios.get(officialUrl, { 
+        timeout: 1500, 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } 
+      });
+      if (testRes.status === 200) {
+        return officialUrl;
+      }
+    } catch (e: any) {
+      console.log(`[Manual Finder] Verification of URL status failed or timed out: ${officialUrl}`);
+    }
+
+    // Default return calculated url
+    return officialUrl;
+  }
+
+  // Decode VIN endpoint
+  app.get('/api/vehicles/decode-vin/:vin', async (req, res) => {
+    try {
+      const { vin } = req.params;
+      if (!vin) {
+        return res.status(400).json({ error: "El VIN es obligatorio" });
+      }
+      const data = await getVehicleDataFromNHTSA(vin);
+      if (!data) {
+        return res.status(404).json({ error: "No se pudieron decodificar los datos del VIN" });
+      }
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Dedicated Multer for manuals (UP TO 50MB) and specific format support
   const uploadManual = multer({
     storage,
@@ -499,6 +592,9 @@ async function startServer() {
         uploaded_at: new Date().toISOString()
       };
 
+      let manualId = `manual-${Date.now()}`;
+      let dbSucceeded = false;
+
       if (db) {
         try {
           // Bypassing SQL in favor of Firestore, writing to "vehicle_manuals" collection
@@ -506,19 +602,40 @@ async function startServer() {
             ...manualData,
             uploaded_at: admin.firestore.FieldValue.serverTimestamp()
           });
-          return res.status(201).json({
-            message: 'Manual subido correctamente',
-            manual: { id: docRef.id, title: manualData.title, file_url: fileUrl }
-          });
+          manualId = docRef.id;
+          dbSucceeded = true;
         } catch (dbErr: any) {
           console.warn("[Server/Bypass] Creating Firestore vehicle_manuals entry failed:", dbErr.message);
         }
       }
 
-      // Fallback response with simulated database record ID
-      res.status(201).json({
+      // Always save to a local JSON backup as fallback for smooth preview environments
+      try {
+        const localDir = path.join(process.cwd(), 'uploads');
+        if (!fs.existsSync(localDir)) {
+          fs.mkdirSync(localDir, { recursive: true });
+        }
+        const localDbPath = path.join(localDir, 'manuals.json');
+        let localManuals: any[] = [];
+        if (fs.existsSync(localDbPath)) {
+          try {
+            localManuals = JSON.parse(fs.readFileSync(localDbPath, 'utf8'));
+          } catch (e) {
+            localManuals = [];
+          }
+        }
+        localManuals.push({
+          id: manualId,
+          ...manualData
+        });
+        fs.writeFileSync(localDbPath, JSON.stringify(localManuals, null, 2), 'utf8');
+      } catch (backupErr: any) {
+        console.warn("[Server/Backup] Failed to write local manuals.json:", backupErr.message);
+      }
+
+      return res.status(201).json({
         message: 'Manual subido correctamente',
-        manual: { id: `manual-${Date.now()}`, title: manualData.title, file_url: fileUrl }
+        manual: { id: manualId, title: manualData.title, file_url: fileUrl }
       });
     } catch (error: any) {
       console.error("Error uploading manual:", error);
@@ -530,7 +647,9 @@ async function startServer() {
   app.get('/api/vehicle/:vehicle_id/manuals', async (req, res) => {
     try {
       const { vehicle_id } = req.params;
+      const { brand, model, year, vin } = req.query;
       const manuals: any[] = [];
+      let dbSucceeded = false;
 
       if (db) {
         try {
@@ -549,12 +668,76 @@ async function startServer() {
 
           // Sort descending by uploaded date
           manuals.sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime());
+          dbSucceeded = true;
         } catch (dbErr: any) {
           console.warn("[Server/Bypass] Loading vehicle_manuals from Firestore failed:", dbErr.message);
         }
       }
 
-      res.json(manuals);
+      // If database fetch was not successful or returned empty, load from backup local database
+      if (!dbSucceeded || manuals.length === 0) {
+        try {
+          const localDbPath = path.join(process.cwd(), 'uploads', 'manuals.json');
+          if (fs.existsSync(localDbPath)) {
+            const localManuals = JSON.parse(fs.readFileSync(localDbPath, 'utf8'));
+            const filtered = localManuals.filter((m: any) => m.vehicle_id === vehicle_id);
+            filtered.forEach((m: any) => {
+              if (!manuals.some(existing => existing.id === m.id)) {
+                manuals.push(m);
+              }
+            });
+            manuals.sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime());
+          }
+        } catch (backupErr: any) {
+          console.warn("[Server/Backup] Failed to read local manuals.json:", backupErr.message);
+        }
+      }
+
+      // --- Suggested official manual auto-discovery ---
+      let suggestedManual: any = null;
+      let decodedData: any = null;
+
+      let searchBrand = brand as string;
+      let searchModel = model as string;
+      let searchYear = year as string;
+
+      if (vin && String(vin).trim().length >= 10) {
+        decodedData = await getVehicleDataFromNHTSA(String(vin).trim());
+        if (decodedData) {
+          if (decodedData["Make"]) searchBrand = decodedData["Make"];
+          if (decodedData["Model"]) searchModel = decodedData["Model"];
+          if (decodedData["Model Year"]) searchYear = decodedData["Model Year"];
+        }
+      }
+
+      if (searchBrand && searchModel && searchYear) {
+        const manualUrl = await fetchOwnerManual(searchBrand, searchModel, searchYear);
+        if (manualUrl) {
+          suggestedManual = {
+            id: "suggested-official-manual",
+            title: `Manual Oficial de ${searchBrand} ${searchModel} (${searchYear})`,
+            description: decodedData ? `Decodificado del VIN via Base de Datos Nacional NHTSA` : "Manual original sugerido por el fabricante",
+            file_url: manualUrl,
+            file_type: "link",
+            file_size: 0,
+            uploaded_at: new Date().toISOString(),
+            isOfficial: true,
+            decodedVinData: decodedData ? {
+              make: decodedData["Make"],
+              model: decodedData["Model"],
+              year: decodedData["Model Year"],
+              bodyClass: decodedData["Body Class"],
+              engineCylinders: decodedData["Engine Number of Cylinders"],
+              driveType: decodedData["Drive Type"]
+            } : null
+          };
+        }
+      }
+
+      res.json({
+        manuals,
+        suggestedManual
+      });
     } catch (error) {
       console.error("Error loading vehicle manuals:", error);
       res.status(500).json({ error: 'Error al obtener los manuales.' });
@@ -565,6 +748,7 @@ async function startServer() {
   app.delete('/api/manual/:id', async (req, res) => {
     try {
       const { id } = req.params;
+      let dbDeleted = false;
 
       if (db) {
         try {
@@ -580,10 +764,31 @@ async function startServer() {
               }
             }
             await docRef.delete();
+            dbDeleted = true;
           }
         } catch (dbErr: any) {
           console.warn("[Server/Bypass] Deleting vehicle_manual entry failed:", dbErr.message);
         }
+      }
+
+      // Clean up from the local backup DB as well
+      try {
+        const localDbPath = path.join(process.cwd(), 'uploads', 'manuals.json');
+        if (fs.existsSync(localDbPath)) {
+          let localManuals = JSON.parse(fs.readFileSync(localDbPath, 'utf8'));
+          const itemToDelete = localManuals.find((m: any) => m.id === id);
+          if (itemToDelete && itemToDelete.file_url && !dbDeleted) {
+            const fileName = itemToDelete.file_url.split('/').pop();
+            const localFilePath = path.join(process.cwd(), 'uploads', fileName);
+            if (fs.existsSync(localFilePath)) {
+              fs.unlinkSync(localFilePath);
+            }
+          }
+          localManuals = localManuals.filter((m: any) => m.id !== id);
+          fs.writeFileSync(localDbPath, JSON.stringify(localManuals, null, 2), 'utf8');
+        }
+      } catch (backupErr: any) {
+        console.warn("[Server/Backup] Failed to update local manuals.json:", backupErr.message);
       }
 
       res.json({ message: 'Manual eliminado correctamente.' });
