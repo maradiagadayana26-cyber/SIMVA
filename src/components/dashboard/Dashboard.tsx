@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Car, Fuel, Calendar, Gauge, Zap, AlertTriangle, CheckCircle2, ChevronRight, PenSquare, PlusCircle, Wrench, BookOpen } from "lucide-react";
+import { Car, Fuel, Calendar, Gauge, Zap, AlertTriangle, CheckCircle2, ChevronRight, PenSquare, PlusCircle, Wrench, BookOpen, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -14,12 +14,14 @@ import { toast } from "sonner";
 import { AppDownloadSection } from "../ui/AppDownloadSection";
 import { PromotionalBanner } from "../ui/PromotionalBanner";
 import { VehicleManuals } from "./VehicleManuals";
+import { AIMaintenancePlanner } from "./AIMaintenancePlanner";
 
 export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) => void; onShowWorkshops: () => void }) {
   const { user } = useAuth();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVehicleForManuals, setSelectedVehicleForManuals] = useState<any>(null);
+  const [selectedVehicleForAIPlanner, setSelectedVehicleForAIPlanner] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -188,7 +190,11 @@ export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) 
                           <p className="text-sm font-black italic">{(v.maintenanceFrequency || 0).toLocaleString()} km</p>
                         </div>
                       </div>
-                      <Button onClick={() => onEdit(v)} className="h-12 font-bold rounded-xl shadow-lg shadow-primary/10">
+                      <Button onClick={() => setSelectedVehicleForAIPlanner(v)} className="h-12 font-bold rounded-xl bg-gradient-to-r from-emerald-500/20 to-primary/20 hover:from-emerald-500/35 hover:to-primary/35 border-2 border-primary/40 text-primary shadow-lg shadow-primary/10">
+                        <Sparkles className="mr-2 h-4 w-4 fill-primary/30" />
+                        Plan de IA
+                      </Button>
+                      <Button onClick={() => onEdit(v)} variant="ghost" className="h-11 font-bold rounded-xl text-xs hover:bg-white/5">
                         <PenSquare className="mr-2 h-4 w-4" />
                         Gestionar Vehículo
                       </Button>
@@ -232,6 +238,12 @@ export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) 
             year={selectedVehicleForManuals.year}
             vin={selectedVehicleForManuals.vin}
             onClose={() => setSelectedVehicleForManuals(null)}
+          />
+        )}
+        {selectedVehicleForAIPlanner && (
+          <AIMaintenancePlanner
+            vehicle={selectedVehicleForAIPlanner}
+            onClose={() => setSelectedVehicleForAIPlanner(null)}
           />
         )}
       </AnimatePresence>

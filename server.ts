@@ -550,6 +550,36 @@ async function startServer() {
     }
   });
 
+  // AI Maintenance Planner endpoint
+  app.post('/api/vehicles/ai-maintenance', async (req, res) => {
+    try {
+      const { brand, model, year, fuelType, currentKms, lastOilChangeKms, lastFilterChangeKms, lastTireChangeKms } = req.body;
+      
+      if (!brand || !model) {
+        return res.status(400).json({ error: "Marca y modelo son obligatorios" });
+      }
+
+      const { getAIMaintenanceIntervals, calculateFutureMaintenance } = await import("./src/services/geminiService");
+
+      const intervals = await getAIMaintenanceIntervals(brand, model, year || "", fuelType || "");
+      const current = Number(currentKms) || 0;
+      const lastOil = lastOilChangeKms !== undefined && lastOilChangeKms !== "" && lastOilChangeKms !== null ? Number(lastOilChangeKms) : undefined;
+      const lastFilter = lastFilterChangeKms !== undefined && lastFilterChangeKms !== "" && lastFilterChangeKms !== null ? Number(lastFilterChangeKms) : undefined;
+      const lastTire = lastTireChangeKms !== undefined && lastTireChangeKms !== "" && lastTireChangeKms !== null ? Number(lastTireChangeKms) : undefined;
+
+      const upcoming = calculateFutureMaintenance(intervals, current, lastOil, lastFilter, lastTire);
+
+      res.json({
+        success: true,
+        intervals,
+        upcoming
+      });
+    } catch (error: any) {
+      console.error("Error in AI maintenance endpoint:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Dedicated Multer for manuals (UP TO 50MB) and specific format support
   const uploadManual = multer({
     storage,
