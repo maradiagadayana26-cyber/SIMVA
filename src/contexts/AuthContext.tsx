@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth, db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType, getDocWithRetry } from '@/src/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface UserProfile {
   id: string;
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fetch or create profile
         const userDocRef = doc(db, 'users', user.uid);
         try {
-          const userDoc = await getDoc(userDocRef);
+          const userDoc = await getDocWithRetry(userDocRef);
           if (userDoc.exists()) {
             setProfile(userDoc.data() as UserProfile);
           } else {

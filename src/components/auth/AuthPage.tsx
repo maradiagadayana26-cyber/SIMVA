@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { auth, db, handleFirestoreError, OperationType } from "@/src/lib/firebase";
+import { auth, db, handleFirestoreError, OperationType, handleFirebaseAuthError } from "@/src/lib/firebase";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { 
   createUserWithEmailAndPassword, 
@@ -90,8 +90,13 @@ export function AuthPage() {
         
         toast.success("¡Cuenta creada correctamente!");
       }
-    } catch (error) {
-      toast.error("Error: " + (error as any).message);
+    } catch (error: any) {
+      const friendlyMessage = handleFirebaseAuthError(error);
+      if (error?.code === "auth/unauthorized-domain") {
+        toast.error(friendlyMessage, { duration: 15000 });
+      } else {
+        toast.error(friendlyMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -131,8 +136,13 @@ export function AuthPage() {
       }
       
       toast.success("Sesión iniciada con Google");
-    } catch (error) {
-      toast.error("Error con Google: " + (error as any).message);
+    } catch (error: any) {
+      const friendlyMessage = handleFirebaseAuthError(error);
+      if (error?.code === "auth/unauthorized-domain") {
+        toast.error(friendlyMessage, { duration: 15000 });
+      } else {
+        toast.error(friendlyMessage);
+      }
     } finally {
       setLoading(false);
     }
