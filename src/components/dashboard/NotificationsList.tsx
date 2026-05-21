@@ -4,7 +4,7 @@ import { db, handleFirestoreError, OperationType } from "@/src/lib/firebase";
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Mail, Clock, CheckCircle2, Wrench, ShieldCheck, AlertTriangle, Sparkles, BellRing } from "lucide-react";
+import { Bell, Mail, Clock, CheckCircle2, Wrench, ShieldCheck, AlertTriangle, Sparkles, BellRing, Droplet } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -194,111 +194,6 @@ export function NotificationsList() {
         )}
       </div>
 
-      {/* Simulator Control Center Box */}
-      <Card className="border-2 border-primary/20 bg-black/30 rounded-[2rem] overflow-hidden backdrop-blur-md shadow-xl">
-        <CardHeader className="pb-4 bg-white/5 border-b border-white/10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/30 shrink-0">
-                <BellRing className="h-5 w-5" />
-              </div>
-              <div className="text-left">
-                <CardTitle className="font-heading uppercase italic tracking-tight text-lg flex items-center gap-2">
-                  Notificaciones Push <span className="text-[10px] bg-primary text-black font-black uppercase tracking-widest px-2 py-0.5 rounded-full">OneSignal</span>
-                </CardTitle>
-                <CardDescription className="text-[10px] font-bold text-muted-foreground">
-                  Alertas instantáneas de ITV, Mantenimientos y revisiones mecánicas de SIMVA
-                </CardDescription>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2 self-start md:self-auto">
-              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Dispositivo:</span>
-              <Badge className={cn(
-                "font-black uppercase tracking-wider text-[9px] px-2 py-0.5 rounded-full border",
-                osPermission === "granted" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
-                osPermission === "denied" ? "bg-red-500/15 text-red-400 border-red-500/30" :
-                "bg-yellow-500/15 text-yellow-500 border-yellow-500/30 animate-pulse"
-              )}>
-                {osPermission === "granted" ? "Concedido" : 
-                 osPermission === "denied" ? "Denegado" : "Pendiente"}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-5 text-left">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Para que el león SIMVA pueda rugir en tu pantalla con alertas en caliente, solicita y acepta el permiso OneSignal. El sistema sincronizará los vencimientos contigo automáticamente en segundo plano.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4">
-            {osPermission !== "granted" ? (
-              <button
-                onClick={handleRequestPermission}
-                className="flex-1 flex items-center justify-center h-11 rounded-xl bg-[#2AC1FF] hover:bg-[#54FFB5] text-black font-black text-xs hover:scale-[1.01] active:scale-95 transition-all shadow-lg uppercase tracking-wider"
-              >
-                Habilitar Avisos en Navegador
-              </button>
-            ) : (
-              <div className="flex-1 flex items-center justify-center h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-xs gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                Suscripción Push Registrada Activamente
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-white/10 pt-4 space-y-4">
-            <h4 className="text-xs font-black uppercase tracking-widest text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#2AC1FF]" />
-              Probar en vivo Alertas de Mantenimiento e ITV
-            </h4>
-            <p className="text-[10px] leading-relaxed italic text-muted-foreground">
-              Selecciona uno de tus vehículos guardados en el garaje para simular el disparo y comprobar la entrega inmediata del push del navegador:
-            </p>
-
-            <div className="flex flex-col md:flex-row items-end gap-3 bg-white/5 border border-white/10 p-4 rounded-2xl">
-              <div className="w-full space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Garaje del Usuario</label>
-                <select
-                  value={selectedVehicleId}
-                  onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="w-full h-11 px-3 rounded-lg border bg-black/40 border-white/20 text-foreground font-bold text-xs focus:border-[#2AC1FF] focus:outline-none transition-colors"
-                >
-                  {vehicles.length === 0 ? (
-                    <option value="">(Sin vehículos - Usar León Demo)</option>
-                  ) : (
-                    vehicles.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.brand} {v.model} {v.plate ? `[${v.plate}]` : ""}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              <div className="w-full md:w-auto flex gap-2 shrink-0">
-                <button
-                  disabled={simulating}
-                  onClick={() => triggerSimulation('maintenance')}
-                  className="flex-1 md:flex-none flex items-center justify-center h-11 px-4 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-black text-[10px] uppercase tracking-wider hover:scale-[1.01] active:scale-95 transition-all shadow-lg disabled:opacity-50 shrink-0"
-                >
-                  <Wrench className="h-3.5 w-3.5 mr-1" />
-                  Test Mantenimiento
-                </button>
-                <button
-                  disabled={simulating}
-                  onClick={() => triggerSimulation('itv')}
-                  className="flex-1 md:flex-none flex items-center justify-center h-11 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] uppercase tracking-wider hover:scale-[1.01] active:scale-95 transition-all shadow-lg disabled:opacity-50 shrink-0"
-                >
-                  <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                  Test ITV
-                </button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Feed list */}
       <div className="grid gap-4 text-left">
         {notifications.length === 0 ? (
@@ -306,8 +201,8 @@ export function NotificationsList() {
             <div className="h-16 w-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
               <Bell className="h-8 w-8 text-muted-foreground animate-pulse" />
             </div>
-            <h2 className="text-xl font-black font-heading uppercase italic tracking-tighter">Bandeja Vacía</h2>
-            <p className="text-muted-foreground mt-1 max-w-sm text-xs">Aún no hay alertas grabadas. Utiliza los botones de arriba para simular tu primera alerta de ITV o Mantenimiento.</p>
+            <h2 className="text-xl font-black font-heading uppercase italic tracking-tighter">Sin avisos pendientes</h2>
+            <p className="text-muted-foreground mt-1 max-w-sm text-xs">No hay alertas de mantenimiento o ITV pendientes. ¡Tu vehículo está al día!</p>
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
@@ -342,6 +237,7 @@ export function NotificationsList() {
                             )}>
                               {notif.type === 'maintenance' ? <Wrench className="h-5 w-5" /> : 
                                notif.type === 'itv' ? <AlertTriangle className="h-5 w-5 text-blue-400" /> :
+                               notif.type === 'oil_change' ? <Droplet className="h-5 w-5 text-amber-500 animate-pulse" /> :
                                notif.type === 'welcome' ? <SimvaLogo className="h-5 w-5" /> :
                                <Bell className="h-5 w-5" />}
                             </div>

@@ -34,10 +34,14 @@ import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import axios from 'axios';
 import { sendNotification } from './src/lib/onesignal-server';
+import cron from 'node-cron';
 import { 
   createWelcomeNotification, 
   rescheduleVehicleNotifications, 
-  processDueNotifications 
+  processDueNotifications,
+  checkMaintenanceAlerts,
+  checkItvAlerts,
+  checkOilChangeAlerts
 } from './src/lib/notification-scheduler';
 
 // Initialize Config
@@ -310,6 +314,75 @@ async function startServer() {
     }
   });
 
+  // Test Notification (push or email) endpoint
+  app.post("/api/send-test-notification", async (req, res) => {
+    const { userId, type, userEmail, userName } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: "El ID del usuario es obligatorio" });
+    }
+
+    try {
+      let email = userEmail;
+      let name = userName || 'Usuario';
+
+      if (!email && db) {
+        try {
+          const userSnap = await db.collection("users").doc(userId).get();
+          if (userSnap.exists) {
+            const userData = userSnap.data();
+            email = userData?.email;
+            name = userData?.fullName || 'Usuario';
+          }
+        } catch (dbErr: any) {
+          console.warn("[Server/Bypass] Fetching user in send-test-notification failed:", dbErr.message);
+        }
+      }
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          error: "No se proporcionó el email del usuario y no se pudo consultar de la base de datos."
+        });
+      }
+
+      if (type === 'email') {
+        const emailRes = await sendNotification({
+          userEmail: email,
+          userName: name,
+          type: 'welcome',
+          customData: {
+            welcome: {
+              message: 'Prueba de notificación SIMVA: Si has recibido este correo, el sistema de notificaciones está operativo.'
+            }
+          }
+        });
+        return res.json({ success: emailRes.success, error: emailRes.error, id: emailRes.id, warning: emailRes.warning });
+      }
+
+      if (type === 'push') {
+        const emailRes = await sendNotification({
+          userEmail: email,
+          userName: name,
+          type: 'maintenance',
+          userId: userId,
+          customData: {
+            push: {
+              title: "🔔 Prueba: Esta es una notificación push de SIMVA.",
+              body: "Si has recibido esta notificación push, el sistema está operativo."
+            }
+          }
+        });
+        return res.json({ success: emailRes.success, error: emailRes.error, id: emailRes.id, warning: emailRes.warning });
+      }
+
+      return res.status(400).json({ success: false, error: `Tipo no soportado: ${type}` });
+    } catch (error: any) {
+      console.error("Error sending test notification:", error);
+      res.status(500).json({ success: false, error: error.message || "Error al enviar notificación de prueba" });
+    }
+  });
+
   // Update email preferences
   app.post("/api/update-email-preferences", async (req, res) => {
     const { userId, enabled } = req.body;
@@ -394,7 +467,23 @@ async function startServer() {
     }
   });
 
-  // Background interval for processing notifications
+  // Force checking maintenance and ITV alert reminders
+  app.post("/api/alerts/force-check", async (req, res) => {
+    try {
+      if (!db) {
+        return res.status(500).json({ success: false, error: "Database not ready." });
+      }
+      await checkMaintenanceAlerts(db);
+      await checkItvAlerts(db);
+      await checkOilChangeAlerts(db);
+      res.json({ success: true, message: 'Comprobación de alertas ejecutada' });
+    } catch (error: any) {
+      console.error("Error running manual alert check:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Background interval and Daily Cron for processing notifications & alerts
   if (db) {
     const firestoreDb = db;
     setInterval(() => {
@@ -402,6 +491,18 @@ async function startServer() {
         console.debug("Periodic job run (Optional, admin privilege bypassed).");
       });
     }, 30 * 60 * 1000);
+
+    // Cron schedule '0 9 * * *' (Every day at 9:00 AM)
+    cron.schedule('0 9 * * *', async () => {
+      console.log('🦁 [Cron] Ejecutando comprobación diaria de alertas de mantenimiento, ITV y Cambio de Aceite...');
+      try {
+        await checkMaintenanceAlerts(firestoreDb);
+        await checkItvAlerts(firestoreDb);
+        await checkOilChangeAlerts(firestoreDb);
+      } catch (err: any) {
+        console.error("Error running daily alerts cron:", err.message);
+      }
+    });
   }
 
   // Technical Sheet Upload API

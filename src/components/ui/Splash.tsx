@@ -1,12 +1,13 @@
 import { motion } from "motion/react";
 import { SimvaLogo } from "@/src/components/icons/SimvaLogo";
+import simvaBg from "../../assets/images/SIMVA.png";
 
 export function Splash() {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#0A2F44] text-white">
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-10"
-        style={{ backgroundImage: 'url("/src/assets/images/SIMVA.png")' }}
+        style={{ backgroundImage: `url(${simvaBg})` }}
       />
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -27,8 +28,11 @@ export function Splash() {
         <h1 className="font-heading text-6xl font-black tracking-tighter text-white uppercase italic">
           SIMVA
         </h1>
-        <div className="mt-4 flex flex-col gap-1 items-center">
-          <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em]">
+        <div className="mt-4 flex flex-col gap-1 items-center max-w-md mx-auto">
+          <p className="text-xs font-bold text-[#2AC1FF] uppercase tracking-wider text-center px-6 leading-relaxed">
+            Sistema Inteligente para el Mantenimiento de Vehículos Automatizado
+          </p>
+          <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.4em] mt-2">
             Automotive Intelligence
           </p>
           <div className="h-[2px] w-12 bg-primary/50 mt-2" />

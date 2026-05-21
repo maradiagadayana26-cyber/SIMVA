@@ -2,11 +2,10 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Smartphone, Zap, ShieldCheck } from 'lucide-react';
 import { SimvaLogo } from '../icons/SimvaLogo';
+import phoneImage from '../../assets/images/phone_with_lion_app_mockup_1779216629488.png';
+import simvaLogo from '../../assets/images/simva_logo_oficial.png';
 
 export function PromotionalBanner() {
-  const phoneImage = "/src/assets/images/phone_with_lion_app_mockup_1779216629488.png";
-  const simvaLogo = "/src/assets/images/simva_logo_oficial.png";
-
   return (
     <div className="w-full flex flex-col items-center justify-center py-12 px-6 space-y-16">
       {/* Lleva SIMVA en tu móvil Section */}

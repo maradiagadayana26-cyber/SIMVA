@@ -1,4 +1,5 @@
 import { Zap, Twitter, Instagram, Github } from "lucide-react";
+import simvaLogoImg from "../../assets/images/simva_logo_oficial.png";
 
 export function Footer() {
   return (
@@ -7,7 +8,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <img src="/src/assets/images/simva_logo.png" alt="SIMVA Logo" className="h-8 w-8 object-contain" />
+              <img src={simvaLogoImg} alt="SIMVA Logo" className="h-8 w-8 object-contain" />
               <span className="font-heading text-lg font-bold tracking-tight text-primary">
                 SIMVA
               </span>

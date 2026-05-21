@@ -166,7 +166,10 @@ export function AuthPage() {
           </motion.div>
           <div className="space-y-1">
             <h1 className="font-heading text-4xl font-black tracking-tight text-white uppercase italic">SIMVA</h1>
-            <p className="text-gray-400 font-medium px-4">
+            <p className="text-[11px] font-bold tracking-wider text-[#2AC1FF] uppercase max-w-[320px] mx-auto text-center leading-relaxed">
+              Sistema Inteligente para el Mantenimiento de Vehículos Automatizado
+            </p>
+            <p className="text-gray-400 font-medium px-4 pt-2">
               "Un minuto y tu coche estará bajo control. ¡Sin esfuerzo!"
             </p>
           </div>

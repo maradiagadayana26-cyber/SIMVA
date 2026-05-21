@@ -710,3 +710,157 @@ const VehicleDetailScreen = ({ route }) => {
 };
 ```
 
+---
+
+## 6. Configuración de Firebase In-App Messaging en Flutter 📱
+
+Si estás desarrollando la aplicación móvil de **SIMVA** utilizando el framework **Flutter**, puedes guiarte por este instructivo detallado para integrar **Firebase In-App Messaging** para enviar avisos visuales interactivos y campañas directamente a la pantalla del conductor sin necesidad de un push persistente externo.
+
+### A. Adición de la Dependencia a Flutter
+Para agregar el SDK oficial de mensajería dentro de la aplicación inalámbrica, ejecuta el siguiente comando en la raíz de tu proyecto Flutter:
+
+```bash
+flutter pub add firebase_in_app_messaging
+```
+
+Este comando actualizará automáticamente el archivo `pubspec.yaml` de tu aplicación con la versión compatible de la biblioteca:
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.0.0
+  firebase_in_app_messaging: ^0.8.0
+```
+
+### B. Inicialización e Importación del SDK (Dart)
+Para activar la recepción de campañas en tiempo real y disparar los diálogos interactivos de SIMVA de manera contextual (como alerta de cambio de aceite o ITV superada), añade el archivo de importación al inicio de tus controladores o componentes en Dart:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_in_app_messaging/firebase_in_app_messaging.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const SimvaApp());
+}
+
+class SimvaApp extends StatelessWidget {
+  const SimvaApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'SIMVA 🦁',
+      theme: ThemeData(
+        primarySwatch: Colors.amber,
+        scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+      ),
+      home: const NotificationCenterScreen(),
+    );
+  }
+}
+```
+
+### C. Monitoreo e Interacción con Mensajes Contextuales
+El SDK de **Firebase In-App Messaging** funciona de forma totalmente pasiva tras su importación inicial. Sin embargo, puedes forzar comportamientos de prueba o definir disparadores basados en eventos analísticos personalizados (por ejemplo, cuando un usuario excede los kilómetros de mantenimiento en SIMVA):
+
+```dart
+class NotificationCenterScreen extends StatefulWidget {
+  const NotificationCenterScreen({Key? key}) : super(key: key);
+
+  @override
+  _NotificationCenterScreenState createState() => _NotificationCenterScreenState();
+}
+
+class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
+  final FirebaseInAppMessaging _inAppMessaging = FirebaseInAppMessaging.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _configureInAppAlerts();
+  }
+
+  void _configureInAppAlerts() {
+    // Permitir la visualización activa de campañas
+    _inAppMessaging.setMessagesDisplaySuppressed(false);
+  }
+
+  // Simular la detección en Flutter de un rebasamiento de kilometraje
+  void _triggerOilChangeCustomEvent() {
+    // Los mensajes In-App se configuran en la consola de Firebase para reaccionar ante eventos analíticos de Firebase Analytics.
+    // Al disparar eventos en el flujo del usuario, este recibirá inmediatamente el aviso flotante (Modal / Banner).
+    print("Mantenimiento excedido: disparando evento contextual para In-App Messaging...");
+    
+    // Forzamos la actualización de campañas o mostramos feedback local
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🦁 SIMVA: Comprobando campañas de mensajería In-App...'),
+        backgroundColor: Colors.amber,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('🔔 Avisos y Canales'),
+        backgroundColor: const Color(0xFFF5B81B),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.mark_unread_chat_alt_rounded,
+                size: 80,
+                color: Color(0xFFF5B81B),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Firebase In-App Messaging',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2C2C2C)),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Los anuncios, advertencias mecánicas y avisos de promoción flotarán de manera enriquecida (Modales, Banners o Tarjetas de imagen) directamente sobre la interfaz de cliente.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.4),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton.icon(
+                onPressed: _triggerOilChangeCustomEvent,
+                icon: const Icon(Icons.flash_on),
+                label: const Text('Simular Disparo del Mensaje'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2C2C2C),
+                  backgroundColor: const Color(0xFFF5B81B),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+### D. Ejecución y Depuración en el Entorno Local
+Para compilar y testear la entrega de estos mensajes contextuales en un emulador o dispositivo real conectado, ejecuta:
+
+```bash
+flutter run
+```
+
+*Nota para depuración:* Para que los mensajes de prueba lleguen de inmediato a tu emulador android/iOS sin el desfase habitual de entrega de Firebase (que puede demorar varias horas por caché interno), busca el **ID de Instalación de Firebase (FID)** en los logs de la consola del terminal (`flutter run` output) y agrégalo como **Dispositivo de Prueba** en la consola de Firebase en la sección de campañas.
+
+

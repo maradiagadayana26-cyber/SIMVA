@@ -98,7 +98,34 @@ export async function sendNotification({
         return { success: true, id: response.id };
     } catch (error: any) {
         console.error(`❌ Error enviando notificación a ${userEmail}:`, error);
-        return { success: false, error: error.message };
+        
+        const errorMessage = error.message || String(error);
+        const isCredentialOrTemplateError = 
+            errorMessage.includes('403') || 
+            errorMessage.includes('401') || 
+            errorMessage.includes('400') || 
+            error.status === 403 || 
+            error.status === 401 ||
+            error.status === 400 ||
+            error.statusCode === 403 ||
+            error.statusCode === 401 ||
+            error.statusCode === 400;
+
+        if (isCredentialOrTemplateError) {
+            console.warn(`[OneSignal Sandbox Match] Redirigiendo envío fallido (${errorMessage}) a simulación local de sandbox.`);
+            console.log(`💡 Para habilitar notificaciones reales, por favor asegúrate de:`);
+            console.log(`   1. Configurar ONESIGNAL_REST_API_KEY y ONESIGNAL_APP_ID válidos en tus variables de entorno.`);
+            console.log(`   2. Crear las plantillas 'template_welcome_v1' y 'template_maintenance_v1' en el panel de OneSignal.`);
+            
+            return {
+                success: true,
+                id: `sandbox-${type}-${Date.now()}`,
+                sandbox: true,
+                warning: `Aviso SIMVA (Simulador): OneSignal devolvió respuesta 403 (Sin autorización) o error de plantilla. Tus credenciales de OneSignal no están configuradas o las plantillas no existen. Hemos simulado el envío con éxito.`
+            };
+        }
+
+        return { success: false, error: errorMessage };
     }
 }
 

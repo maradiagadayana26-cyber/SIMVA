@@ -15,6 +15,9 @@ import { AppDownloadSection } from "../ui/AppDownloadSection";
 import { PromotionalBanner } from "../ui/PromotionalBanner";
 import { VehicleManuals } from "./VehicleManuals";
 import { AIMaintenancePlanner } from "./AIMaintenancePlanner";
+import { VehicleHealthChart } from "./VehicleHealthChart";
+import { Activity } from "lucide-react";
+import simvaLogoImg from "../../assets/images/simva_logo_oficial.png";
 
 export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) => void; onShowWorkshops: () => void }) {
   const { user } = useAuth();
@@ -22,6 +25,7 @@ export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) 
   const [loading, setLoading] = useState(true);
   const [selectedVehicleForManuals, setSelectedVehicleForManuals] = useState<any>(null);
   const [selectedVehicleForAIPlanner, setSelectedVehicleForAIPlanner] = useState<any>(null);
+  const [expandedChartVehicleId, setExpandedChartVehicleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -100,7 +104,7 @@ export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
         <div>
           <h1 className="text-4xl font-black font-heading tracking-tight text-balance flex items-center gap-3">
-            <img src="/src/assets/images/simva_logo.png" alt="" className="h-10 w-10 object-contain" />
+            <img src={simvaLogoImg} alt="" className="h-10 w-10 object-contain" />
             SIMVA Garaje
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
@@ -194,12 +198,36 @@ export function Dashboard({ onEdit, onShowWorkshops }: { onEdit: (vehicle: any) 
                         <Sparkles className="mr-2 h-4 w-4 fill-primary/30" />
                         Plan de IA
                       </Button>
+                      <Button 
+                        onClick={() => setExpandedChartVehicleId(expandedChartVehicleId === v.id ? null : v.id)} 
+                        className={`h-11 font-bold rounded-xl text-xs flex items-center justify-center gap-2 ${
+                          expandedChartVehicleId === v.id 
+                            ? "bg-primary text-white border-2 border-primary" 
+                            : "bg-primary/5 hover:bg-primary/10 border-2 border-primary/20 text-primary"
+                        }`}
+                      >
+                        <Activity className="h-4 w-4" />
+                        {expandedChartVehicleId === v.id ? "Ocultar Salud" : "Análisis de Salud"}
+                      </Button>
                       <Button onClick={() => onEdit(v)} variant="ghost" className="h-11 font-bold rounded-xl text-xs hover:bg-white/5">
                         <PenSquare className="mr-2 h-4 w-4" />
                         Gestionar Vehículo
                       </Button>
                     </div>
                   </div>
+
+                  <AnimatePresence>
+                    {expandedChartVehicleId === v.id && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <VehicleHealthChart vehicle={v} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <div className="mt-8 pt-6 border-t grid grid-cols-4 gap-4">
                     <div className="flex flex-col items-center">

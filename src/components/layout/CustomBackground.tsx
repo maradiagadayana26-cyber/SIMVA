@@ -1,4 +1,5 @@
 import React from "react";
+import simvaBgImage from "../../assets/images/SIMVA.png";
 
 interface CustomBackgroundProps {
   children: React.ReactNode;
@@ -10,7 +11,7 @@ export const CustomBackground: React.FC<CustomBackgroundProps> = ({ children }) 
       {/* Main Background Image with Overlay */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20"
-        style={{ backgroundImage: 'url("/src/assets/images/SIMVA.png")' }}
+        style={{ backgroundImage: `url(${simvaBgImage})` }}
       />
       
       {/* Decorative Text Overlays (Watermark style) */}

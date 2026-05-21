@@ -71,3 +71,28 @@ export function checkMaintenanceAlert(vehicle: any) {
   // Trigger alert if we are at 90% or more of the frequency
   return kmsSinceLast >= (freq * 0.9);
 }
+
+export async function sendTestNotification(userId: string, type: 'push' | 'email', userEmail?: string, userName?: string) {
+  try {
+    const response = await fetch("/api/send-test-notification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        type,
+        userEmail,
+        userName
+      })
+    });
+    
+    const data = await response.json();
+    return { 
+      success: response.ok && data.success !== false, 
+      message: data.error || data.message, 
+      warning: data.warning 
+    };
+  } catch (error: any) {
+    console.error("Error dispatching test notification:", error);
+    return { success: false, message: error.message || "Error de red al enviar notificación." };
+  }
+}

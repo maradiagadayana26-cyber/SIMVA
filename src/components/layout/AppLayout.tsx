@@ -165,7 +165,9 @@ export function AppLayout() {
                   </Button>
                </div>
 
-               <AppDownloadSection />
+
+
+                <AppDownloadSection />
             </div>
           </div>
         );
