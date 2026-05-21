@@ -483,6 +483,42 @@ async function startServer() {
     }
   });
 
+  // AI-powered maintenance notification route
+  app.post('/api/mantenimiento', async (req, res) => {
+    try {
+      const { name, vehicle, type, date, email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ success: false, error: "El correo electrónico ('email') es obligatorio." });
+      }
+
+      const { generateMaintenanceEmail } = await import("./services/ai.service");
+      const { sendEmail } = await import("./services/notification.service");
+
+      const emailContent = await generateMaintenanceEmail({
+        name,
+        vehicle,
+        type,
+        date
+      });
+
+      const emailRes = await sendEmail(
+        email,
+        'Recordatorio de mantenimiento',
+        emailContent
+      );
+
+      res.json({
+        success: true,
+        emailSent: true,
+        messageId: (emailRes as any)?.data?.id || `simulated-${Date.now()}`
+      });
+    } catch (error: any) {
+      console.error("Error in /api/mantenimiento:", error);
+      res.status(500).json({ success: false, error: error.message || "Error interno del servidor en /api/mantenimiento." });
+    }
+  });
+
   // Background interval and Daily Cron for processing notifications & alerts
   if (db) {
     const firestoreDb = db;
